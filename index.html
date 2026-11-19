@@ -1,0 +1,910 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<script>try { if (localStorage.getItem("theme") === "light") document.documentElement.dataset.theme = "light"; } catch (e) {}</script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="devdctr is a Mac menu bar toolkit for developers: see running servers, check Git repos, switch Node, PHP and Python versions, clear build leftovers, get HTTPS .test domains and catch problems early.">
+<title>devdctr</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon-32.png" type="image/png" sizes="32x32">
+<link rel="icon" href="favicon-48.png" type="image/png" sizes="48x48">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: a clinical, Mac-native page. Hero pairs the promise with a working copy of the menu bar app;
+   each module then gets a row of copy beside a small "readout" of what it actually shows. */
+/* Dark for everyone; the toggle in the nav switches to light and remembers it. */
+:root {
+  --bg: #0D1015; --surface: #151A21; --ink: #ECEFF4; --muted: #98A1B2; --line: #252C37;
+  --accent: #3D8BFF; --accent-soft: #14233D; --pulse: #FF5A4F; --ok: #34C76A; --warn: #FFB02E;
+  --app-bg: #1E2229; --app-card: rgba(255,255,255,.055);
+  --shadow: 0 30px 60px -20px rgba(0,0,0,.7), 0 0 0 .5px rgba(255,255,255,.12);
+  --display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --body: "Inter", -apple-system, system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --radius: 14px;
+  color-scheme: dark;
+}
+:root[data-theme="light"] {
+  --bg: #F3F5F8;          /* cool exam-room white, tinted toward the blue accent */
+  --surface: #FFFFFF;
+  --ink: #12151B;
+  --muted: #5A6272;
+  --line: #DDE2EA;
+  --accent: #0A6CFF;      /* macOS system blue, as in the app */
+  --accent-soft: #E3EDFF;
+  --pulse: #F0433A;       /* the heartbeat line and "problem" marks only */
+  --ok: #1FA855;
+  --warn: #F29A0E;
+  --app-bg: #ECEEF2;      /* the popover mock */
+  --app-card: rgba(18,21,27,.045);
+  --shadow: 0 30px 60px -20px rgba(20,35,70,.28), 0 0 0 .5px rgba(18,21,27,.12);
+  --display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --body: "Inter", -apple-system, system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --radius: 14px;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body { margin: 0; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body { background: var(--bg); color: var(--ink); font: 16px/1.6 var(--body); -webkit-font-smoothing: antialiased; }
+a { color: inherit; }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 8px; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; letter-spacing: -0.02em; }
+p { margin: 0; }
+.eyebrow { font: 600 12px/1 var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+
+/* Nav */
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+nav.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: color-mix(in srgb, var(--bg) 85%, transparent); backdrop-filter: saturate(1.6) blur(14px); -webkit-backdrop-filter: saturate(1.6) blur(14px); border-bottom: .5px solid var(--line); }
+nav.top .wrap { display: flex; align-items: center; gap: 24px; height: 60px; }
+.brand { display: flex; align-items: center; gap: 9px; font: 800 20px/1 var(--display); letter-spacing: -0.03em; text-decoration: none; }
+.brand svg { width: 26px; height: 26px; }
+.nav-links { display: flex; gap: 22px; margin-left: auto; font-size: 14px; color: var(--muted); }
+.nav-links a { text-decoration: none; }
+.nav-links a:hover { color: var(--ink); }
+.theme-toggle { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line); background: var(--surface); color: var(--ink); display: grid; place-items: center; cursor: pointer; flex: none; }
+.theme-toggle:hover { border-color: var(--muted); }
+.theme-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.theme-toggle svg { width: 18px; height: 18px; }
+.theme-toggle .moon { display: none; }
+:root[data-theme="light"] .theme-toggle .sun { display: none; }
+:root[data-theme="light"] .theme-toggle .moon { display: block; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 18px; border-radius: 999px; font: 600 14px/1 var(--body); text-decoration: none; border: 0; cursor: pointer; transition: transform .15s, background .15s; }
+.btn:active { transform: scale(.97); }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: color-mix(in srgb, var(--accent) 88%, #000); }
+.btn-quiet { background: color-mix(in srgb, var(--ink) 7%, transparent); color: var(--ink); }
+.btn-quiet:hover { background: color-mix(in srgb, var(--ink) 12%, transparent); }
+.btn-lg { height: 48px; padding: 0 24px; font-size: 15px; }
+@media (max-width: 720px) { .nav-links { display: none; } .theme-toggle { margin-left: auto; } }
+
+/* Hero */
+.hero { padding-block: 72px 40px; }
+.hero .wrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 520px); gap: 56px; align-items: center; }
+.hero h1 { font-size: clamp(44px, 6.4vw, 76px); line-height: .98; font-weight: 800; letter-spacing: -0.04em; }
+.hero h1 em { font-style: normal; color: var(--accent); }
+.hero .lede { margin-top: 22px; font-size: 18px; color: var(--muted); max-width: 34em; }
+.hero .ctas { margin-top: 30px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.hero .fine { margin-top: 16px; font-size: 13px; color: var(--muted); }
+.pulse-line { margin-top: 34px; width: 100%; max-width: 520px; height: 46px; display: block; }
+.pulse-line path { fill: none; stroke: var(--pulse); stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 900; stroke-dashoffset: 0; animation: trace 2.4s ease-out both; }
+@keyframes trace { from { stroke-dashoffset: 900; } to { stroke-dashoffset: 0; } }
+@media (prefers-reduced-motion: reduce) { .pulse-line path { animation: none; } }
+@media (max-width: 900px) { .hero .wrap { grid-template-columns: 1fr; gap: 44px; } .hero { padding-block: 44px 24px; } }
+
+/* Real screenshots of the app */
+.stage { display: flex; justify-content: center; min-width: 0; }
+.menubar { width: 100%; max-width: 520px; }
+.menubar-strip { display: flex; justify-content: flex-end; align-items: center; gap: 14px; height: 26px; padding: 0 12px; font: 500 12px/1 var(--body); color: var(--muted); }
+.menubar-strip .mb-icon { width: 26px; height: 20px; display: grid; place-items: center; border-radius: 5px; background: color-mix(in srgb, var(--ink) 12%, transparent); color: var(--ink); }
+.menubar-strip .mb-icon svg { width: 15px; height: 15px; }
+.shot-pop { position: relative; margin-top: 8px; border-radius: 12px; box-shadow: var(--shadow); aspect-ratio: 520 / 560; }
+.shot-pop img, .shot-win img { display: block; width: 100%; height: auto; }
+.shot-pop img { border-radius: 12px; }
+/* Invisible buttons laid over the screenshot's own tab bar, so its tabs really work. */
+.tab-hits { position: absolute; left: 1.7%; right: 1.7%; bottom: 0; height: 9.6%; display: grid; grid-template-columns: repeat(9, 1fr); }
+.tab-hits button { background: none; border: 0; padding: 0; cursor: pointer; border-radius: 8px; }
+.tab-hits button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.mock-note { margin-top: 12px; text-align: center; font-size: 12px; color: var(--muted); }
+/* Light and dark screenshots follow the page's theme. */
+.t-light { display: none !important; }
+:root[data-theme="light"] .t-light { display: block !important; }
+:root[data-theme="light"] .t-dark { display: none !important; }
+
+/* The full window section */
+.window-section .section-head { margin-inline: auto; text-align: center; align-items: center; }
+.chooser { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: -16px auto 28px; }
+.chooser button { font: 600 13px/1 var(--body); color: var(--muted); background: color-mix(in srgb, var(--ink) 6%, transparent); border: 0; border-radius: 999px; padding: 9px 15px; cursor: pointer; transition: background .15s, color .15s; }
+.chooser button:hover { color: var(--ink); }
+.chooser button[aria-selected="true"] { background: var(--accent); color: #fff; }
+.shot-win { max-width: 1040px; margin-inline: auto; border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); aspect-ratio: 1040 / 680; background: var(--surface); }
+.win-caption { margin-top: 16px; text-align: center; font-size: 14px; color: var(--muted); min-height: 1.6em; }
+
+/* Beta sign-up */
+.beta { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: start; }
+.beta .section-head { margin-bottom: 0; }
+.beta-points { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+.beta-points li { display: flex; gap: 12px; align-items: baseline; color: var(--muted); font-size: 15.5px; }
+.beta-points li b { color: var(--ink); font-weight: 600; }
+.beta-points svg { flex: none; width: 14px; height: 14px; color: var(--ok); transform: translateY(2px); }
+.beta-form { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 28px; display: flex; flex-direction: column; gap: 16px; }
+.beta-form h3 { font-size: 20px; font-weight: 700; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field label { font-size: 13px; font-weight: 600; }
+.field label span { font-weight: 400; color: var(--muted); }
+.field input, .field select, .field textarea { font: 15px/1.4 var(--body); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; width: 100%; box-sizing: border-box; }
+.field textarea { min-height: 84px; resize: vertical; }
+.field input:focus, .field select:focus, .field textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.beta-form .btn { width: 100%; }
+.form-fine { font-size: 12.5px; color: var(--muted); }
+#beta-fields .form-fine { line-height: 1.5; }
+#beta-fields .form-fine + .form-fine { margin-top: 12px; }
+.form-status { font-size: 14px; font-weight: 500; min-height: 1.4em; }
+.form-status.ok { color: var(--ok); }
+.form-status.err { color: var(--pulse); }
+.beta-done { text-align: center; padding: 28px 8px; display: flex; flex-direction: column; gap: 10px; align-items: center; }
+.beta-done svg { width: 40px; height: 40px; color: var(--ok); }
+.hidden-field { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+.badge-beta { display: inline-block; font: 700 11px/1 var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); background: var(--accent-soft); padding: 5px 8px; border-radius: 999px; margin-right: 8px; vertical-align: 1px; }
+@media (max-width: 900px) { .beta { grid-template-columns: 1fr; gap: 32px; } .field-row { grid-template-columns: 1fr; } }
+
+/* Sections */
+section { padding-block: 72px; }
+.section-head { max-width: 640px; display: flex; flex-direction: column; gap: 14px; margin-bottom: 44px; }
+.section-head h2 { font-size: clamp(32px, 4.4vw, 48px); line-height: 1.04; font-weight: 800; }
+.section-head p { color: var(--muted); font-size: 17px; }
+
+/* Modules */
+.modules { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+.module { display: grid; grid-template-columns: 220px 1fr 340px; gap: 40px; padding-block: 36px; border-bottom: 1px solid var(--line); align-items: start; }
+.module .label { display: flex; align-items: center; gap: 12px; }
+.module .label .icon { width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center; background: var(--surface); border: 1px solid var(--line); color: var(--ink); }
+.module .label .icon svg { width: 22px; height: 22px; }
+.module h3 { font-size: 26px; font-weight: 700; }
+.module .copy { min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.module .copy .headline { font: 600 19px/1.35 var(--body); }
+.module .copy p { color: var(--muted); max-width: 36em; }
+.module ul { margin: 4px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; font-size: 15px; }
+.module li { padding-left: 20px; position: relative; }
+.module li::before { content: ""; position: absolute; left: 2px; top: .62em; width: 8px; height: 2px; border-radius: 2px; background: var(--accent); }
+/* AI: usage and cost, then what a connected assistant can do. */
+.ai-intro { margin-inline: auto; text-align: center; align-items: center; }
+.ai-block { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 520px); gap: 64px; align-items: center; padding-block: 40px; }
+.ai-block + .ai-block { border-top: 1px solid var(--line); }
+.ai-block.flip { grid-template-columns: minmax(0, 520px) minmax(0, 1fr); }
+.ai-block.flip .ai-copy { order: 2; }
+.ai-step { font: 600 13px/1 var(--body); color: var(--accent); margin-bottom: 12px; }
+.ai-copy h3 { font-size: clamp(26px, 3vw, 34px); line-height: 1.1; font-weight: 800; margin-bottom: 14px; }
+.ai-copy > p { font-size: 17px; line-height: 1.6; color: var(--muted); max-width: 32em; }
+.ai-points { list-style: none; padding: 0; margin: 20px 0 0; display: flex; flex-direction: column; gap: 10px; }
+.ai-points li { display: flex; gap: 10px; align-items: flex-start; font-size: 16px; line-height: 1.45; }
+.ai-points svg { width: 18px; height: 18px; color: var(--accent); flex: none; margin-top: 2px; }
+.ai-copy .ai-compat { margin-top: 22px; font-size: 13px; line-height: 1.5; color: var(--muted); }
+.ai-shot { border-radius: 12px; box-shadow: var(--shadow); aspect-ratio: 520 / 560; max-width: 520px; width: 100%; }
+.ai-shot img { display: block; width: 100%; height: auto; border-radius: 12px; }
+.chat { position: static; }
+.chat .term-body { display: flex; flex-direction: column; gap: 14px; padding: 20px 22px 22px; }
+.module .ai-compat-inline { margin-top: 14px; font-size: 13px; color: var(--muted); }
+.chat .term-body div { white-space: normal; padding-left: 0; text-indent: 0; }
+.chat .you { color: #ECEFF4; font-family: var(--body); font-size: 14px; }
+.chat .you::before { content: "› "; color: #34C76A; font-family: var(--mono); }
+.chat .call { color: #8B95A6; }
+.chat .call b { color: #3D8BFF; font-weight: 600; }
+.chat .reply { color: #D6DDE8; font-family: var(--body); font-size: 14px; line-height: 1.55; }
+.chat .reply code { font-family: var(--mono); font-size: 12.5px; color: #ECEFF4; background: #1E2530; padding: 1px 5px; border-radius: 4px; }
+.chat .ok { color: #34C76A; }
+@media (max-width: 900px) { .ai-block, .ai-block.flip { grid-template-columns: 1fr; gap: 32px; } .ai-block.flip .ai-copy { order: 0; } }
+/* Why I built it: the story beside the terminal routine it replaces. */
+.story { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); gap: 56px; align-items: center; }
+.story .section-head { margin-bottom: 22px; }
+.story-copy p { font-size: 17px; line-height: 1.65; color: var(--muted); margin: 0 0 16px; max-width: 36em; }
+.story-copy p.lead { color: var(--ink); font-size: 19px; }
+.story-copy .sign { margin-top: 26px; display: flex; align-items: center; gap: 12px; color: var(--ink); font: 600 15px/1.3 var(--body); }
+.story-copy .sign small { display: block; font-weight: 400; color: var(--muted); font-size: 13px; }
+.story-copy .sign .mark { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; color: #fff; background: linear-gradient(#3d8cff, #055ceb); flex: none; }
+.story-copy .sign .mark svg { width: 22px; height: 22px; }
+.term { position: sticky; top: 90px; border-radius: var(--radius); overflow: hidden; background: #0F1318; color: #D6DDE8; box-shadow: var(--shadow); font: 500 13px/1.75 var(--mono); }
+.term-bar { display: flex; align-items: center; gap: 7px; padding: 11px 14px; background: #1A2028; border-bottom: 1px solid #262D37; }
+.term-bar i { width: 11px; height: 11px; border-radius: 50%; background: #3A424E; }
+.term-bar span { margin-left: 8px; font: 500 12px/1 var(--body); color: #8B95A6; }
+.term-body { padding: 16px 18px 18px; overflow-x: auto; }
+.term-body div { white-space: nowrap; }
+.term-body .p { color: #34C76A; } .term-body .c { color: #6E7889; }
+.term-foot { border-top: 1px solid #262D37; padding: 14px 18px; font: 500 13px/1.5 var(--body); color: #8B95A6; display: flex; flex-direction: column; gap: 10px; }
+.term-foot b { color: #ECEFF4; font-weight: 600; }
+.term-foot .after { display: flex; align-items: center; gap: 10px; color: #ECEFF4; }
+.term-foot .after svg { width: 18px; height: 18px; color: #3D8BFF; flex: none; }
+@media (max-width: 900px) { .story { grid-template-columns: 1fr; gap: 36px; } .term { position: static; } }
+@media (max-width: 520px) { .term { font-size: 12px; } .term-body div { white-space: normal; overflow-wrap: anywhere; padding-left: 1.2em; text-indent: -1.2em; } }
+.readout { min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; font: 500 13px/1.5 var(--mono); display: flex; flex-direction: column; gap: 8px; }
+.readout .r-title { font: 600 11px/1 var(--body); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+.readout .r { display: flex; justify-content: space-between; gap: 12px; }
+.readout .r span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.readout .r span:last-child { flex: none; color: var(--muted); font-variant-numeric: tabular-nums; }
+.readout .r.total { border-top: 1px dashed var(--line); padding-top: 8px; color: var(--ink); }
+.readout .r.total span:last-child { color: var(--accent); font-weight: 600; }
+.readout .ok { color: var(--ok); } .readout .bad { color: var(--pulse); } .readout .warn { color: var(--warn); }
+@media (max-width: 980px) { .module { grid-template-columns: 1fr; gap: 18px; } }
+
+/* Principles */
+.principles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.principle { background: var(--surface); padding: 26px; display: flex; flex-direction: column; gap: 8px; }
+.principle h3 { font-size: 19px; font-weight: 700; }
+.principle p { color: var(--muted); font-size: 15px; }
+@media (max-width: 860px) { .principles { grid-template-columns: 1fr; } }
+
+/* Pricing */
+.pricing { background: var(--surface); border-block: 1px solid var(--line); }
+.plans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; align-items: stretch; }
+.plan { position: relative; border: 1px solid var(--line); border-radius: 18px; padding: 28px; display: flex; flex-direction: column; gap: 18px; background: var(--bg); }
+.plan.featured { border: 2px solid var(--accent); background: var(--surface); box-shadow: 0 20px 40px -24px color-mix(in srgb, var(--accent) 60%, transparent); }
+.plan .tag { position: absolute; top: -12px; left: 26px; background: var(--accent); color: #fff; font: 600 11px/1 var(--body); letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 999px; }
+.plan h3 { font-size: 20px; font-weight: 700; }
+.price { display: flex; align-items: baseline; gap: 6px; }
+.price .amount { font: 800 52px/1 var(--display); letter-spacing: -0.04em; }
+.price .per { color: var(--muted); font-size: 15px; }
+.plan .note { font-size: 14px; color: var(--muted); min-height: 2.9em; }
+.plan ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; font-size: 14.5px; flex: 1; }
+.plan li { display: flex; gap: 10px; align-items: baseline; }
+.plan li svg { flex: none; width: 14px; height: 14px; color: var(--ok); transform: translateY(2px); }
+.plan .btn { width: 100%; }
+.price-promise { margin-top: 28px; display: flex; flex-wrap: wrap; gap: 10px 28px; justify-content: center; font-size: 14px; color: var(--muted); }
+.price-promise b { color: var(--ink); font-weight: 600; }
+@media (max-width: 900px) { .plans { grid-template-columns: 1fr; max-width: 460px; margin: 0 auto; } .plan .note { min-height: 0; } }
+
+/* FAQ */
+.faq { display: grid; grid-template-columns: 1fr 1fr; gap: 0 48px; }
+details { border-bottom: 1px solid var(--line); padding-block: 18px; }
+summary { cursor: pointer; font: 600 16px/1.4 var(--body); list-style: none; display: flex; justify-content: space-between; gap: 16px; }
+summary::-webkit-details-marker { display: none; }
+summary::after { content: "+"; font: 500 20px/1 var(--body); color: var(--muted); transition: transform .2s; }
+details[open] summary::after { transform: rotate(45deg); }
+details p { margin-top: 10px; color: var(--muted); font-size: 15px; max-width: 34em; }
+@media (max-width: 800px) { .faq { grid-template-columns: 1fr; } }
+
+/* Final CTA + footer */
+.final { text-align: center; }
+.final .wrap { display: flex; flex-direction: column; align-items: center; gap: 18px; }
+.final h2 { font-size: clamp(34px, 5vw, 58px); font-weight: 800; line-height: 1.02; max-width: 14em; }
+.final p { color: var(--muted); font-size: 17px; }
+footer { padding-block: 28px 40px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+footer .wrap { display: flex; flex-wrap: wrap; gap: 12px 28px; justify-content: space-between; }
+footer .links { display: flex; gap: 20px; }
+footer a { text-decoration: none; } footer a:hover { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<!-- Shared icon symbols -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-steth" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v5a4 4 0 0 0 8 0V3"/><path d="M9 12v2.5a5.5 5.5 0 0 0 11 0V12"/><circle cx="20" cy="10" r="2"/><path d="M4 3h2M12 3h2"/></g></symbol>
+  <symbol id="i-servers" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M13 6.5 9 12.5h3.5L11 17.5l4-6h-3.5z"/></g></symbol>
+  <symbol id="i-cleanup" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M10 3c.6 4.2 2.3 5.9 6.5 6.5-4.2.6-5.9 2.3-6.5 6.5-.6-4.2-2.3-5.9-6.5-6.5C7.7 8.9 9.4 7.2 10 3z"/><path d="M17.5 14c.3 2 1.1 2.8 3 3-1.9.3-2.7 1.1-3 3-.3-1.9-1.1-2.7-3-3 1.9-.2 2.7-1 3-3z"/></g></symbol>
+  <symbol id="i-domains" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.8 3.8 5.8 3.8 9s-1.2 6.2-3.8 9c-2.6-2.8-3.8-5.8-3.8-9S9.4 5.8 12 3z"/></g></symbol>
+  <symbol id="i-projects" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="m12 3 9 4.5-9 4.5-9-4.5z"/><path d="m3 12 9 4.5 9-4.5M3 16.5 12 21l9-4.5"/></g></symbol>
+  <symbol id="i-ai" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3.5c.6 4.4 2.6 6.6 7 7.5-4.4.9-6.4 3.1-7 7.5-.6-4.4-2.6-6.6-7-7.5 4.4-.9 6.4-3.1 7-7.5z"/><path d="M18.5 3v3M17 4.5h3" stroke-linecap="round"/></g></symbol>
+  <symbol id="i-network" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.2"/><path d="M9.5 16.5v-9M7 10l2.5-2.5L12 10M14.5 7.5v9M12 14l2.5 2.5L17 14"/></g></symbol>
+  <symbol id="i-git" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="5" r="2"/><circle cx="18" cy="5" r="2"/><circle cx="12" cy="20" r="2"/><path d="M6 7v2a4 4 0 0 0 4 4h4a4 4 0 0 0 4-4V7M12 13v5"/></g></symbol>
+  <symbol id="i-runtimes" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="m12 2.8 8 4.6v9.2l-8 4.6-8-4.6V7.4z"/><path d="m4 7.4 8 4.6 8-4.6M12 12v9.2"/></g></symbol>
+  <symbol id="i-check" viewBox="0 0 16 16"><path d="m3 8.5 3 3 7-7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-problem" viewBox="0 0 24 24"><path fill="var(--pulse)" d="M8.3 2h7.4L22 8.3v7.4L15.7 22H8.3L2 15.7V8.3z"/><path d="M12 7v6" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/><circle cx="12" cy="17" r="1.4" fill="#fff"/></symbol>
+  <symbol id="i-warn" viewBox="0 0 24 24"><path fill="var(--warn)" d="M10.3 3.2a2 2 0 0 1 3.4 0l8 14A2 2 0 0 1 20 20H4a2 2 0 0 1-1.7-2.8z"/><path d="M12 9v5" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/><circle cx="12" cy="17" r="1.3" fill="#fff"/></symbol>
+</svg>
+
+<nav class="top" aria-label="Main">
+  <div class="wrap">
+    <a class="brand" href="#top"><svg aria-hidden="true"><use href="#i-steth"/></svg>devdctr</a>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#window">Screenshots</a>
+      <a href="#ai">AI</a>
+      <a href="#story">Why</a>
+      <a href="#beta">Beta</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#faq">FAQ</a>
+    </div>
+    <button class="theme-toggle" type="button" aria-label="Switch to light mode" title="Switch to light mode">
+      <svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></g></svg>
+      <svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.6A8.2 8.2 0 0 1 9.4 4a8.2 8.2 0 1 0 10.6 10.6z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/></svg>
+    </button>
+    <a class="btn btn-primary" href="#beta">Join the beta</a>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="wrap">
+    <div>
+      <p class="eyebrow"><span class="badge-beta">Beta</span>The menu bar toolkit for developers</p>
+      <h1 style="margin-top:14px">Less housekeeping. <em>More&nbsp;code.</em></h1>
+      <p class="lede">devdctr lives in your menu bar and keeps your development setup healthy. See every server you left running, check on every Git repo, watch your network and VPN, keep an eye on Claude Code, switch Node and PHP versions, clear gigabytes of build leftovers, give each project a real HTTPS address, and catch problems before they cost you an afternoon.</p>
+      <div class="ctas">
+        <a class="btn btn-primary btn-lg" href="#beta">Join the free beta</a>
+        <a class="btn btn-quiet btn-lg" href="#features">See what it does</a>
+      </div>
+      <p class="fine">Free while it's in beta. Needs an Apple silicon Mac with macOS 14 Sonoma or later.</p>
+      <svg class="pulse-line" viewBox="0 0 520 46" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M0 26 H170 l10 -6 l8 6 h16 l9 -22 l11 40 l9 -26 l7 8 h18 l9 -4 l8 4 H520"/>
+      </svg>
+    </div>
+
+    <div class="stage">
+      <div class="menubar">
+        <div class="menubar-strip" aria-hidden="true">
+          <span class="mb-icon"><svg><use href="#i-steth"/></svg></span>
+        </div>
+        <div class="shot-pop" role="region" aria-label="The devdctr menu bar window">
+          <img class="t-light" id="pop-light" src="images/popover-servers-light.webp" width="520" height="560" alt="devdctr's menu bar window showing four dev servers, each matched to its project" fetchpriority="high">
+          <img class="t-dark" id="pop-dark" src="images/popover-servers-dark.webp" width="520" height="560" alt="" aria-hidden="true">
+          <div class="tab-hits" role="tablist" aria-label="Sections">
+            <button role="tab" data-tab="servers" aria-label="Servers" aria-selected="true"></button>
+            <button role="tab" data-tab="network" aria-label="Network" aria-selected="false"></button>
+            <button role="tab" data-tab="ai" aria-label="AI" aria-selected="false"></button>
+            <button role="tab" data-tab="cleanup" aria-label="Cleanup" aria-selected="false"></button>
+            <button role="tab" data-tab="domains" aria-label="Domains" aria-selected="false"></button>
+            <button role="tab" data-tab="projects" aria-label="Projects" aria-selected="false"></button>
+            <button role="tab" data-tab="git" aria-label="Git" aria-selected="false"></button>
+            <button role="tab" data-tab="runtimes" aria-label="Runtimes" aria-selected="false"></button>
+            <button role="tab" data-tab="doctor" aria-label="Doctor" aria-selected="false"></button>
+          </div>
+        </div>
+        <p class="mock-note">Real screenshots. Click the tabs to look around.</p>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section id="features">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Every tool, one menu bar icon</p>
+      <h2>Everything your dev setup quietly gets wrong.</h2>
+      <p>devdctr finds your projects on its own, in places like ~/Sites, ~/Developer and ~/Code. Each tool works from that same list, so there's nothing to configure.</p>
+    </div>
+
+    <div class="modules">
+      <article class="module">
+        <div class="label"><span class="icon"><svg aria-hidden="true"><use href="#i-servers"/></svg></span><h3>Servers</h3></div>
+        <div class="copy">
+          <p class="headline">What's running, and which project it belongs to.</p>
+          <p>No more <code>lsof -i :3000</code> to find out what's holding a port. Every dev server shows up with its project, framework and how long it's been running.</p>
+          <ul><li>Recognises Next.js, Vite, Astro, Django, Rails, Laravel and more</li><li>Open it in the browser or stop it with one click</li><li>Databases and other apps kept out of the way</li></ul>
+        </div>
+        <div class="readout"><div class="r-title">Listening now</div>
+          <div class="r"><span>storefront · Next.js</span><span>:3000</span></div>
+          <div class="r"><span>admin-dashboard · Vite</span><span>:5173</span></div>
+          <div class="r"><span>payments-api · Uvicorn</span><span>:8000</span></div>
+          <div class="r total"><span>Forgotten for 3 days</span><span>payments-api</span></div>
+        </div>
+      </article>
+
+      <article class="module">
+        <div class="label"><span class="icon"><svg aria-hidden="true"><use href="#i-network"/></svg></span><h3>Network</h3></div>
+        <div class="copy">
+          <p class="headline">Is it the Wi-Fi, the VPN or the server?</p>
+          <p>See your download and upload speed live, how your Mac is connected, which VPN is on and what it carries, and the IP address the internet sees. When something's slow, you'll know where to look.</p>
+          <ul><li>Live speed, packets and a minute of history</li><li>Spots Tailscale, WireGuard, OpenVPN and more, and whether they carry all your traffic</li><li>Router and internet latency, DNS, Wi-Fi signal, and the apps using the network</li></ul>
+        </div>
+        <div class="readout"><div class="r-title">Right now</div>
+          <div class="r"><span>Download</span><span>5.9 MB/s</span></div>
+          <div class="r"><span>Upload</span><span>250 KB/s</span></div>
+          <div class="r"><span>Internet latency</span><span>14 ms</span></div>
+          <div class="r total"><span>VPN</span><span>Tailscale · some networks</span></div>
+        </div>
+      </article>
+
+      <article class="module">
+        <div class="label"><span class="icon"><svg aria-hidden="true"><use href="#i-ai"/></svg></span><h3>AI</h3></div>
+        <div class="copy">
+          <p class="headline">Know what your AI costs, and let it lend a hand.</p>
+          <p>See the tokens you've used and what they'd cost, and every AI session you have open. Then connect devdctr to your AI tools of choice so they can check and fix things on your Mac when you ask. <a href="#ai">More about AI</a></p>
+          <ul><li>Token use and cost for today and this week</li><li>One-click connection to your AI tools</li><li>Spots other AI apps and local models</li></ul>
+          <p class="ai-compat-inline">Works with Claude Code, Claude's desktop app, Cursor and other apps that support MCP.</p>
+        </div>
+        <div class="readout"><div class="r-title">This week</div>
+          <div class="r"><span>Sessions open</span><span>2</span></div>
+          <div class="r"><span>Tokens used</span><span>9.9M</span></div>
+          <div class="r"><span>Read from the cache</span><span>95%</span></div>
+          <div class="r total"><span>At API prices</span><span>$47.20</span></div>
+        </div>
+      </article>
+
+      <article class="module">
+        <div class="label"><span class="icon"><svg aria-hidden="true"><use href="#i-cleanup"/></svg></span><h3>Cleanup</h3></div>
+        <div class="copy">
+          <p class="headline">Get back the gigabytes your tools leave behind.</p>
+          <p>Dependency folders, build output and developer caches pile up across every project you've ever touched. devdctr finds them, sizes them and moves what you pick to the Bin. Your code is never touched.</p>
+          <ul><li>Choose by type: clear node_modules but keep vendor</li><li>Skips projects you're working on right now</li><li>Everything goes to the Bin, so it can be put back</li></ul>
+        </div>
+        <div class="readout"><div class="r-title">Found on a typical Mac</div>
+          <div class="r"><span>node_modules · 14 projects</span><span>9.8 GB</span></div>
+          <div class="r"><span>Xcode DerivedData</span><span>5.4 GB</span></div>
+          <div class="r"><span>npm cache</span><span>2.2 GB</span></div>
+          <div class="r"><span>.next and dist output</span><span>1.2 GB</span></div>
+          <div class="r total"><span>Ready to free</span><span>18.6 GB</span></div>
+        </div>
+      </article>
+
+      <article class="module">
+        <div class="label"><span class="icon"><svg aria-hidden="true"><use href="#i-domains"/></svg></span><h3>Domains</h3></div>
+        <div class="copy">
+          <p class="headline">Real HTTPS addresses for every project.</p>
+          <p>Swap localhost:5173 for https://shop.test, with a padlock your browser trusts. It works with any stack, and the address keeps working when your dev server picks a different port.</p>
+          <ul><li>One-time setup, then add a domain in one click</li><li>Works with Vite, Next.js, Laravel, Django and anything else that serves HTTP</li><li>WebSockets and hot reload pass straight through</li></ul>
+        </div>
+        <div class="readout"><div class="r-title">Routing</div>
+          <div class="r"><span>https://storefront.test</span><span>→ :3000</span></div>
+          <div class="r"><span>https://api.test</span><span>→ :8000</span></div>
+          <div class="r"><span>https://blog.test</span><span>→ :8080</span></div>
+          <div class="r total"><span>Certificate</span><span><span class="ok">Trusted</span></span></div>
+        </div>
+      </article>
+
+      <article class="module">
+        <div class="label"><span class="icon"><svg aria-hidden="true"><use href="#i-projects"/></svg></span><h3>Projects</h3></div>
+        <div class="copy">
+          <p class="headline">Every project on your Mac, most recent first.</p>
+          <p>A searchable list of everything you've worked on, with its stack at a glance. Jump into Terminal or Finder without hunting through folders.</p>
+          <ul><li>Detects Node, Python, PHP, Ruby, Go, Rust, Swift and more</li><li>Open in Terminal, show in Finder or copy the path</li><li>Rescans whenever you like</li></ul>
+        </div>
+        <div class="readout"><div class="r-title">Recently worked on</div>
+          <div class="r"><span>storefront</span><span>Node</span></div>
+          <div class="r"><span>payments-api</span><span>Python</span></div>
+          <div class="r"><span>menu-timer</span><span>Swift</span></div>
+          <div class="r"><span>blog</span><span>PHP</span></div>
+        </div>
+      </article>
+
+      <article class="module">
+        <div class="label"><span class="icon"><svg aria-hidden="true"><use href="#i-git"/></svg></span><h3>Git</h3></div>
+        <div class="copy">
+          <p class="headline">Where every repo stands, without a single git status.</p>
+          <p>See the branch you're on in each project, what's changed and what hasn't been pushed. Open a repo for its recent commits, branches and stashes. devdctr only reads your repositories, so it's safe to leave open.</p>
+          <ul><li>Unpushed commits and stale branches stand out</li><li>Copy a hash or open a commit on GitHub, GitLab or Bitbucket</li><li>Fetch to check for new commits without touching your files</li></ul>
+        </div>
+        <div class="readout"><div class="r-title">Changed or not pushed</div>
+          <div class="r"><span>storefront · main</span><span><span class="warn">3 changed</span> ↑2</span></div>
+          <div class="r"><span>admin-dashboard · main</span><span>↑1</span></div>
+          <div class="r"><span>ios-companion · main</span><span>↑1</span></div>
+          <div class="r total"><span>Up to date</span><span>5 repos</span></div>
+        </div>
+      </article>
+
+      <article class="module">
+        <div class="label"><span class="icon"><svg aria-hidden="true"><use href="#i-runtimes"/></svg></span><h3>Runtimes</h3></div>
+        <div class="copy">
+          <p class="headline">The right Node, PHP and Python for every project.</p>
+          <p>Set your default in one click, choose a version for each project, and let Terminal switch for you when you cd into it. Works with the tools you already use: nvm for Node, Homebrew for PHP and pyenv for Python.</p>
+          <ul><li>Spots projects that need a version you haven't installed, and installs it</li><li>Switches PHP-FPM along with the command line</li><li>Clears out old Node versions you no longer use</li></ul>
+        </div>
+        <div class="readout"><div class="r-title">This Mac</div>
+          <div class="r"><span>Node default</span><span>22.12.0</span></div>
+          <div class="r"><span>PHP default</span><span>8.4.20</span></div>
+          <div class="r"><span>shop-backend · .php-version</span><span>PHP 8.2</span></div>
+          <div class="r total"><span class="warn">legacy-shop needs PHP 8.1</span><span>Install</span></div>
+        </div>
+      </article>
+
+      <article class="module">
+        <div class="label"><span class="icon"><svg aria-hidden="true"><use href="#i-steth"/></svg></span><h3>Doctor</h3></div>
+        <div class="copy">
+          <p class="headline">Problems caught before they bite.</p>
+          <p>A full check-up of your projects and your Mac in a few seconds, with plain-English explanations and a fix for each one.</p>
+          <ul><li>.env files committed to Git, or missing keys from .env.example</li><li>Work that hasn't been pushed or isn't backed up anywhere</li><li>Out-of-date installs, runtime versions that don't match the project, end-of-life Node, Python, PHP and Ruby</li><li>Developer tools, Git identity and disk space</li></ul>
+        </div>
+        <div class="readout"><div class="r-title">Last check-up</div>
+          <div class="r"><span class="bad">.env committed · payments-api</span><span>problem</span></div>
+          <div class="r"><span class="warn">Needs PHP 8.2 · blog</span><span>warning</span></div>
+          <div class="r"><span class="warn">Node 20 is end-of-life</span><span>warning</span></div>
+          <div class="r total"><span>Projects checked</span><span>24</span></div>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="window-section" id="window">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Menu bar or full window</p>
+      <h2>Prefer a proper window? It's one click away.</h2>
+      <p>Everything in the menu bar also opens in a full Mac window with a sidebar, so there's room to dig into a repo or tidy up dozens of projects. Make it the default if you like it that way.</p>
+    </div>
+    <div class="chooser" role="tablist" aria-label="Window screenshots">
+      <button role="tab" data-shot="git" aria-selected="true">Git</button>
+      <button role="tab" data-shot="git-repo" aria-selected="false">A repository</button>
+      <button role="tab" data-shot="network" aria-selected="false">Network</button>
+      <button role="tab" data-shot="ai" aria-selected="false">AI</button>
+      <button role="tab" data-shot="runtimes-php" aria-selected="false">Runtimes</button>
+      <button role="tab" data-shot="cleanup" aria-selected="false">Cleanup</button>
+      <button role="tab" data-shot="doctor" aria-selected="false">Doctor</button>
+      <button role="tab" data-shot="servers" aria-selected="false">Servers</button>
+    </div>
+    <div class="shot-win">
+      <img class="t-light" id="win-light" src="images/window-git-light.webp" width="1040" height="680" loading="lazy" alt="The devdctr window: a sidebar of tools, with the Git tab listing repositories by what's changed and not pushed">
+      <img class="t-dark" id="win-dark" src="images/window-git-dark.webp" width="1040" height="680" loading="lazy" alt="" aria-hidden="true">
+    </div>
+    <p class="win-caption" id="win-caption">Every repository, sorted by what needs attention.</p>
+  </div>
+</section>
+
+<section id="ai">
+  <div class="wrap">
+    <div class="section-head ai-intro">
+      <p class="eyebrow">New: AI</p>
+      <h2>devdctr and your AI, working together.</h2>
+      <p>Two things: see what your AI tools are using and costing, and let them use devdctr to check and fix things on your Mac.</p>
+    </div>
+
+    <div class="ai-block">
+      <div class="ai-copy">
+        <p class="ai-step">1 · Usage and cost</p>
+        <h3>See what your AI is costing you.</h3>
+        <p>The AI tab adds up the tokens you've used and shows what they'd cost at API prices, so there are no surprises at the end of the month.</p>
+        <ul class="ai-points">
+          <li><svg aria-hidden="true" viewBox="0 0 20 20"><path d="M4.5 10.5l3.5 3.5 7.5-8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Tokens and cost for the last 5 hours, today and this week</span></li>
+          <li><svg aria-hidden="true" viewBox="0 0 20 20"><path d="M4.5 10.5l3.5 3.5 7.5-8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Broken down by project and by model</span></li>
+          <li><svg aria-hidden="true" viewBox="0 0 20 20"><path d="M4.5 10.5l3.5 3.5 7.5-8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Every open session, its model, and how full its memory is</span></li>
+          <li><svg aria-hidden="true" viewBox="0 0 20 20"><path d="M4.5 10.5l3.5 3.5 7.5-8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Counts tokens only. It never reads your conversations</span></li>
+        </ul>
+        <p class="ai-compat">Usage figures for Claude Code. Also spots Cursor, ChatGPT, Codex, Gemini CLI and local models in Ollama and LM Studio.</p>
+      </div>
+      <div class="ai-shot">
+        <img class="t-light" src="images/popover-ai-light.webp" width="520" height="560" loading="lazy" alt="devdctr's AI tab: tokens and cost for the last 5 hours, today and this week, a chart of the last two weeks, and two open sessions with their model and context">
+        <img class="t-dark" src="images/popover-ai-dark.webp" width="520" height="560" loading="lazy" alt="" aria-hidden="true">
+      </div>
+    </div>
+
+    <div class="ai-block flip">
+      <div class="ai-copy">
+        <p class="ai-step">2 · Your AI, connected</p>
+        <h3>Let your AI tools do the legwork.</h3>
+        <p>Connect devdctr to your AI tools of choice with one click. Then just ask, in plain English, and your assistant can:</p>
+        <ul class="ai-points">
+          <li><svg aria-hidden="true" viewBox="0 0 20 20"><path d="M4.5 10.5l3.5 3.5 7.5-8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>See which dev servers are running, and stop one</span></li>
+          <li><svg aria-hidden="true" viewBox="0 0 20 20"><path d="M4.5 10.5l3.5 3.5 7.5-8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Find a free port before starting something new</span></li>
+          <li><svg aria-hidden="true" viewBox="0 0 20 20"><path d="M4.5 10.5l3.5 3.5 7.5-8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Check Git for work that isn't committed or pushed</span></li>
+          <li><svg aria-hidden="true" viewBox="0 0 20 20"><path d="M4.5 10.5l3.5 3.5 7.5-8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Run Doctor to catch leaky .env files and version mismatches</span></li>
+          <li><svg aria-hidden="true" viewBox="0 0 20 20"><path d="M4.5 10.5l3.5 3.5 7.5-8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Give a project a .test address with HTTPS</span></li>
+        </ul>
+        <p class="ai-compat">Works with Claude Code, Claude's desktop app, Cursor and any other app that supports MCP.</p>
+      </div>
+      <div class="term chat" aria-label="Example conversation with an AI assistant connected to devdctr">
+        <div class="term-bar"><i></i><i></i><i></i><span>Your AI assistant, with devdctr connected</span></div>
+        <div class="term-body">
+          <div class="you">What's running on my Mac right now?</div>
+          <div class="call">devdctr · checked your dev servers</div>
+          <div class="reply">Three dev servers: <code>storefront</code> on port 3000, <code>admin-dashboard</code> on 5173 and <code>payments-api</code> on 8000.</div>
+          <div class="you">Stop the dashboard and give storefront a proper HTTPS address.</div>
+          <div class="call">devdctr · stopped admin-dashboard <span class="ok">✓</span></div>
+          <div class="call">devdctr · added storefront.test <span class="ok">✓</span></div>
+          <div class="reply">Done. Storefront is now at <code>https://storefront.test</code>.</div>
+          <div class="you">Anything I should fix before I push?</div>
+          <div class="call">devdctr · ran Doctor</div>
+          <div class="reply">One thing: the <code>.env</code> file in storefront isn't ignored by Git and has an API key in it. Want me to fix that?</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section style="padding-top:8px">
+  <div class="wrap">
+    <div class="principles">
+      <div class="principle"><h3>Made for the Mac</h3><p>Written in SwiftUI. Light and dark mode, tiny on memory, and it sits in the menu bar until you need it. Prefer a proper window? One click, and you can make it the default.</p></div>
+      <div class="principle"><h3>Private by design</h3><p>No account and no tracking. Everything is checked on your Mac. Doctor reads the names of keys in your .env files, never their values.</p></div>
+      <div class="principle"><h3>Careful with your stuff</h3><p>Cleanup only touches folders your tools can rebuild, and moves them to the Bin. Domains asks for your password once, through macOS, and can be removed in one click.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="story">
+  <div class="wrap story">
+    <div class="story-copy">
+      <div class="section-head">
+        <p class="eyebrow">Why I built it</p>
+        <h2>Built out of a long-running annoyance.</h2>
+      </div>
+      <p class="lead">For years, every working session started with a few terminal tabs and a string of commands just to find out where things stood: which server is on port 3000, did I push that branch, why is this project on the wrong version of Node? Debugging was worse, because the culprit was usually something small that was invisible until I went digging. So I built the thing I wanted: one place that shows everything important about my projects at a glance, one click away in the menu bar. I've found it genuinely useful every day, so I've put it out into the world, and I hope you will too.</p>
+      <div class="sign">
+        <span class="mark"><svg aria-hidden="true"><use href="#i-steth"/></svg></span>
+        <span>Matt<small>Developer, and the person who made devdctr</small></span>
+      </div>
+    </div>
+    <div class="term" role="img" aria-label="A terminal showing the commands devdctr replaces">
+      <div class="term-bar"><i></i><i></i><i></i><span>Monday morning, before devdctr</span></div>
+      <div class="term-body">
+        <div><span class="p">$</span> lsof -i :3000 <span class="c"># what's on this port?</span></div>
+        <div><span class="p">$</span> for d in */; do git -C "$d" status -sb; done</div>
+        <div><span class="p">$</span> cat .nvmrc &amp;&amp; node -v <span class="c"># right version?</span></div>
+        <div><span class="p">$</span> php -v &amp;&amp; brew services list</div>
+        <div><span class="p">$</span> du -sh */node_modules | sort -h</div>
+        <div><span class="p">$</span> git check-ignore .env <span class="c"># please say yes</span></div>
+        <div><span class="p">$</span> scutil --nc list <span class="c"># is the VPN on?</span></div>
+        <div><span class="p">$</span> curl -s ipinfo.io</div>
+        <div><span class="p">$</span> ping -c 3 1.1.1.1 <span class="c"># is it me or them?</span></div>
+      </div>
+      <div class="term-foot">
+        <span><b>Nine commands in four tabs</b>, and you still have to put the answers together yourself.</span>
+        <span class="after"><svg aria-hidden="true"><use href="#i-steth"/></svg>With devdctr: click the stethoscope in your menu bar.</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="beta">
+  <div class="wrap beta">
+    <div>
+      <div class="section-head">
+        <p class="eyebrow">Beta</p>
+        <h2>Help shape devdctr.</h2>
+        <p>devdctr is in beta, and a small group of developers is trying it before it goes on sale. Tell us a little about how you work and we'll email you a download link.</p>
+      </div>
+      <ul class="beta-points">
+        <li><svg aria-hidden="true"><use href="#i-check"/></svg><span><b>Free for the whole beta.</b> No card, no account.</span></li>
+        <li><svg aria-hidden="true"><use href="#i-check"/></svg><span><b>A founding-member price at launch.</b> Beta testers get half price for their first year, or Lifetime for £49.</span></li>
+        <li><svg aria-hidden="true"><use href="#i-check"/></svg><span><b>Every update as it ships.</b> Each new beta arrives by email until automatic updates are in.</span></li>
+        <li><svg aria-hidden="true"><use href="#i-check"/></svg><span><b>Your feedback decides what's next.</b> Reply to any beta email with what's broken, missing or brilliant.</span></li>
+        <li><svg aria-hidden="true"><use href="#i-check"/></svg><span><b>One extra step to open it.</b> Beta builds aren't notarised by Apple yet, so the first time you open it, macOS asks you to allow it in System Settings. We'll show you how.</span></li>
+      </ul>
+    </div>
+
+    <form class="beta-form" id="beta-form" action="https://formspree.io/f/mbgoyvwg" method="POST">
+      <div id="beta-fields">
+        <h3>Join the beta</h3>
+        <input type="hidden" name="_subject" value="New devdctr beta sign-up">
+        <div class="hidden-field" aria-hidden="true"><label>Leave this empty <input type="text" name="_gotcha" tabindex="-1" autocomplete="off"></label></div>
+        <div class="field-row">
+          <div class="field">
+            <label for="beta-name">Name <span>(optional)</span></label>
+            <input id="beta-name" name="name" type="text" autocomplete="name">
+          </div>
+          <div class="field">
+            <label for="beta-email">Email</label>
+            <input id="beta-email" name="email" type="email" autocomplete="email" required>
+          </div>
+        </div>
+        <div class="field" style="margin-top:16px">
+          <label for="beta-stack">You mostly build with</label>
+          <select id="beta-stack" name="stack">
+            <option>JavaScript or TypeScript</option>
+            <option>PHP or Laravel</option>
+            <option>Python</option>
+            <option>Ruby</option>
+            <option>Swift</option>
+            <option>Go or Rust</option>
+            <option>A bit of everything</option>
+          </select>
+        </div>
+        <div class="field" style="margin-top:16px">
+          <label for="beta-wish">What would you most like it to sort out? <span>(optional)</span></label>
+          <textarea id="beta-wish" name="wish" placeholder="Forgotten servers, disk space, switching Node versions…"></textarea>
+        </div>
+        <button class="btn btn-primary btn-lg" type="submit" style="margin-top:18px">Request an invite</button>
+        <p class="form-status" id="beta-status" role="status" aria-live="polite"></p>
+        <p class="form-fine"><strong>Needs a Mac with Apple silicon (M1 or later) running macOS 14 Sonoma or later.</strong> The beta doesn't run on Intel Macs yet.</p>
+        <p class="form-fine">As it's a beta, devdctr isn't notarised by Apple yet, so the first time you open it macOS asks you to allow it in System Settings › Privacy &amp; Security. We'll send you the steps.</p>
+        <p class="form-fine">We'll reach out to you as soon as possible with your download link. We'll only email you about the beta. No newsletter, and your details are never shared.</p>
+      </div>
+      <div class="beta-done" id="beta-done" hidden>
+        <svg aria-hidden="true"><use href="#i-check"/></svg>
+        <h3>You're on the list</h3>
+        <p class="form-fine" style="font-size:15px">Thanks for helping out. Your download link will arrive by email.</p>
+      </div>
+    </form>
+  </div>
+</section>
+
+<section class="pricing" id="pricing">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Planned pricing</p>
+      <h2>Less than a coffee a month.</h2>
+      <p>devdctr is free during the beta. When it goes on sale, every plan will include all the tools and every update we ship, with a 7-day free trial first.</p>
+    </div>
+
+    <div class="plans">
+      <div class="plan">
+        <h3>Monthly</h3>
+        <div class="price"><span class="amount">£3.99</span><span class="per">/ month</span></div>
+        <p class="note">Cancel any time. Your price is locked for as long as you subscribe.</p>
+        <ul>
+          <li><svg aria-hidden="true"><use href="#i-check"/></svg>Every tool</li>
+          <li><svg aria-hidden="true"><use href="#i-check"/></svg>Every future update included</li>
+          <li><svg aria-hidden="true"><use href="#i-check"/></svg>Use it on up to 3 of your Macs</li>
+        </ul>
+        <a class="btn btn-quiet" href="#beta">Join the beta</a>
+      </div>
+
+      <div class="plan featured">
+        <span class="tag">Best value</span>
+        <h3>Yearly</h3>
+        <div class="price"><span class="amount">£36</span><span class="per">/ year</span></div>
+        <p class="note">Works out at £3 a month. You save £11.88 a year compared with monthly.</p>
+        <ul>
+          <li><svg aria-hidden="true"><use href="#i-check"/></svg>Every tool</li>
+          <li><svg aria-hidden="true"><use href="#i-check"/></svg>Every future update included</li>
+          <li><svg aria-hidden="true"><use href="#i-check"/></svg>Use it on up to 3 of your Macs</li>
+          <li><svg aria-hidden="true"><use href="#i-check"/></svg>Price locked for as long as you subscribe</li>
+        </ul>
+        <a class="btn btn-primary" href="#beta">Join the beta</a>
+      </div>
+
+      <div class="plan">
+        <h3>Lifetime</h3>
+        <div class="price"><span class="amount">£89</span><span class="per">once</span></div>
+        <p class="note">Pay once and keep devdctr forever, updates included.</p>
+        <ul>
+          <li><svg aria-hidden="true"><use href="#i-check"/></svg>Every tool</li>
+          <li><svg aria-hidden="true"><use href="#i-check"/></svg>Free updates for life</li>
+          <li><svg aria-hidden="true"><use href="#i-check"/></svg>Use it on up to 3 of your Macs</li>
+        </ul>
+        <a class="btn btn-quiet" href="#beta">Join the beta</a>
+      </div>
+    </div>
+
+    <div class="price-promise">
+      <span><b>Free</b> during the beta, then a founding-member discount</span>
+      <span><b>7-day free trial</b> on every plan at launch</span>
+      <span>Prices include VAT</span>
+    </div>
+  </div>
+</section>
+
+<section id="faq">
+  <div class="wrap">
+    <div class="section-head"><p class="eyebrow">Questions</p><h2>Before you install.</h2></div>
+    <div class="faq">
+      <div>
+        <details open><summary>Is the beta free?</summary><p>Yes. The beta costs nothing and needs no card. When devdctr goes on sale, beta testers get a founding-member price: half price for the first year, or Lifetime for £49. Or you can simply stop using it.</p></details>
+        <details><summary>Why does macOS ask before opening it?</summary><p>Beta builds aren't notarised by Apple yet. The first time you open devdctr, macOS stops it; go to System Settings › Privacy &amp; Security and click Open Anyway. You only do this once, and release versions will open without it.</p></details>
+        <details><summary>Will Cleanup delete my projects?</summary><p>No. It only removes folders your tools recreate, like node_modules, vendor, build output and caches. Your code, Git history and settings stay where they are, and everything removed goes to the Bin first.</p></details>
+        <details><summary>Why isn't it on the Mac App Store?</summary><p>App Store apps run in a sandbox that blocks what devdctr does, like seeing which processes hold a port or serving .test domains. It's sold directly instead. Release versions will be signed and notarised by Apple, so macOS opens them without warnings.</p></details>
+        <details><summary>Does devdctr read my Claude conversations?</summary><p>No. The AI tab reads only token counts, model names and folder names from Claude Code's files on your Mac. Your messages and code never leave your Mac, and devdctr sends nothing to Anthropic.</p></details>
+        <details><summary>Does it need my admin password?</summary><p>Only for Domains, once. macOS asks for it when you send .test addresses to your Mac and again when you trust the certificate. devdctr never sees your password.</p></details>
+        <details><summary>Which Macs does it run on?</summary><p>Any Mac with Apple silicon (M1 or later) running macOS 14 Sonoma or later. The beta doesn't run on Intel Macs yet.</p></details>
+        <details><summary>How many Macs can I use it on?</summary><p>Each licence works on up to 3 of your Macs. Replacing a Mac? Remove the old one from your licence and add the new one.</p></details>
+        <details><summary>What happens when the beta ends?</summary><p>Beta builds stop working on the day the beta ends, and the app shows a thank-you with your founding-member discount. You'll see a reminder in the app two weeks before, and we'll email you too.</p></details>
+      </div>
+      <div>
+        <details><summary>Are updates really free?</summary><p>Yes. While you're subscribed, or if you bought Lifetime, every update is included, new tools too.</p></details>
+        <details><summary>What happens if I cancel?</summary><p>devdctr keeps working until the end of the period you've paid for. Your projects are never affected, and you can come back whenever you like.</p></details>
+        <details><summary>Will the price go up?</summary><p>Not for you. Whatever you pay when you subscribe is what you keep paying for as long as you stay subscribed.</p></details>
+        <details><summary>Does it send my code anywhere?</summary><p>No. Every check runs on your Mac. devdctr only goes online to check your licence and look for updates, and, if you push code over SSH, to confirm GitHub, GitLab or Bitbucket still accepts your key.</p></details>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="final">
+  <div class="wrap">
+    <svg class="pulse-line" viewBox="0 0 520 46" preserveAspectRatio="none" aria-hidden="true" style="margin:0 auto 6px">
+      <path d="M0 26 H170 l10 -6 l8 6 h16 l9 -22 l11 40 l9 -26 l7 8 h18 l9 -4 l8 4 H520"/>
+    </svg>
+    <h2>Hand over the housekeeping.</h2>
+    <p>Free while it's in beta. Join now and help decide what it does next.</p>
+    <a class="btn btn-primary btn-lg" href="#beta">Join the beta</a>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>© 2026 devdctr. Made for the Mac.</span>
+    <div class="links"><a href="#features">Features</a><a href="#pricing">Pricing</a><a href="#faq">FAQ</a></div>
+  </div>
+</footer>
+
+<script>
+(() => {
+  // Hero: the screenshot's own tab bar switches between real screenshots.
+  const popLight = document.getElementById("pop-light");
+  const popDark = document.getElementById("pop-dark");
+  const popAlt = {
+    servers: "four dev servers, each matched to its project",
+    cleanup: "build folders and caches you could free, by project",
+    network: "live download and upload speed, the Wi-Fi connection, VPN and public IP",
+    ai: "open Claude Code sessions with their model and context, and tokens used",
+    domains: "setting up HTTPS .test domains",
+    projects: "every project on the Mac, most recent first",
+    git: "repositories sorted by what's changed and not pushed",
+    runtimes: "the Node version used by default and by each project",
+    doctor: "a check-up with one problem and several warnings",
+  };
+  const hits = document.querySelectorAll(".tab-hits button");
+  hits.forEach(button => button.addEventListener("click", () => {
+    const key = button.dataset.tab;
+    hits.forEach(b => b.setAttribute("aria-selected", String(b === button)));
+    popLight.src = `images/popover-${key}-light.webp`;
+    popDark.src = `images/popover-${key}-dark.webp`;
+    popLight.alt = `devdctr's menu bar window showing ${popAlt[key]}`;
+  }));
+
+  // Window section: pick a screen.
+  const winLight = document.getElementById("win-light");
+  const winDark = document.getElementById("win-dark");
+  const caption = document.getElementById("win-caption");
+  const captions = {
+    "git": "Every repository, sorted by what needs attention.",
+    "git-repo": "One repository: uncommitted changes, recent commits, branches and stashes.",
+    "network": "Live speed, your connection, VPN and public IP, all on one page.",
+    "ai": "Every open Claude Code session, its model and context, and what your tokens would cost.",
+    "runtimes-php": "PHP versions from Homebrew, with the version each project needs.",
+    "cleanup": "Pick what to clear by type or by project. It all goes to the Bin.",
+    "doctor": "A check-up of every project and your Mac, with a fix for each problem.",
+    "servers": "Dev servers matched to their projects, plus your Homebrew services.",
+  };
+  const choices = document.querySelectorAll(".chooser button");
+  choices.forEach(button => button.addEventListener("click", () => {
+    const key = button.dataset.shot;
+    choices.forEach(b => b.setAttribute("aria-selected", String(b === button)));
+    winLight.src = `images/window-${key}-light.webp`;
+    winDark.src = `images/window-${key}-dark.webp`;
+    winLight.alt = `The devdctr window. ${captions[key]}`;
+    caption.textContent = captions[key];
+  }));
+
+  // Beta form: send to Formspree without leaving the page.
+  const form = document.getElementById("beta-form");
+  const status = document.getElementById("beta-status");
+  form.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (form.action.includes("REPLACE_WITH_FORM_ID")) {
+      status.className = "form-status err";
+      status.textContent = "Sign-ups aren't switched on yet. Please check back soon.";
+      return;
+    }
+    const button = form.querySelector("button[type=submit]");
+    button.disabled = true;
+    button.textContent = "Sending…";
+    status.textContent = "";
+    try {
+      const response = await fetch(form.action, {
+        method: "POST", body: new FormData(form), headers: { Accept: "application/json" },
+      });
+      if (!response.ok) throw new Error((await response.json().catch(() => ({}))).errors?.[0]?.message);
+      document.getElementById("beta-fields").hidden = true;
+      document.getElementById("beta-done").hidden = false;
+    } catch (error) {
+      status.className = "form-status err";
+      status.textContent = error.message || "That didn't send. Please try again in a moment.";
+      button.disabled = false;
+      button.textContent = "Request an invite";
+    }
+  });
+
+  // Theme toggle: dark by default, light when chosen, remembered on this browser.
+  const root = document.documentElement;
+  const toggle = document.querySelector(".theme-toggle");
+  const label = () => {
+    const text = root.dataset.theme === "light" ? "Switch to dark mode" : "Switch to light mode";
+    toggle.setAttribute("aria-label", text);
+    toggle.title = text;
+  };
+  label();
+  toggle.addEventListener("click", () => {
+    const light = root.dataset.theme !== "light";
+    if (light) root.dataset.theme = "light"; else delete root.dataset.theme;
+    try { localStorage.setItem("theme", light ? "light" : "dark"); } catch (e) {}
+    label();
+  });
+
+  // Fetch the other screenshots once the page is idle, so switching is instant.
+  const preload = () => {
+    const mode = document.documentElement.dataset.theme === "light" ? "light" : "dark";
+    Object.keys(popAlt).forEach(k => { new Image().src = `images/popover-${k}-${mode}.webp`; });
+    Object.keys(captions).forEach(k => { new Image().src = `images/window-${k}-${mode}.webp`; });
+  };
+  ("requestIdleCallback" in window) ? requestIdleCallback(preload) : setTimeout(preload, 1500);
+})();
+</script>
+</body>
+</html>
