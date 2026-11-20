@@ -169,7 +169,8 @@ nav.top .wrap { display: flex; align-items: center; gap: 24px; height: 60px; }
 .shot-pop img, .shot-win img { display: block; width: 100%; height: auto; }
 .shot-pop img { border-radius: 12px; }
 /* Invisible buttons laid over the screenshot's own tab bar, so its tabs really work. */
-.tab-hits { position: absolute; left: 1.7%; right: 1.7%; bottom: 0; height: 9.6%; display: grid; grid-template-columns: repeat(9, 1fr); }
+/* Column widths match the app's tab bar, where each tab is as wide as its label (measured from the screenshot). */
+.tab-hits { position: absolute; left: 1.55%; right: 1.55%; bottom: 0; height: 9.6%; display: grid; grid-template-columns: 51.3fr 54.2fr 57.9fr 62.5fr 59.9fr 59.4fr 55.5fr 51.1fr 52.2fr; }
 .tab-hits button { background: none; border: 0; padding: 0; cursor: pointer; border-radius: 8px; }
 .tab-hits button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .mock-note { margin-top: 12px; text-align: center; font-size: 12px; color: var(--muted); }
@@ -401,18 +402,18 @@ footer a { text-decoration: none; } footer a:hover { color: var(--ink); }
           <span class="mb-icon"><svg><use href="#i-steth"/></svg></span>
         </div>
         <div class="shot-pop" role="region" aria-label="The devdctr menu bar window">
-          <img class="t-light" id="pop-light" src="images/popover-servers-light.webp" width="520" height="560" alt="devdctr's menu bar window showing four dev servers, each matched to its project" fetchpriority="high">
-          <img class="t-dark" id="pop-dark" src="images/popover-servers-dark.webp" width="520" height="560" alt="" aria-hidden="true">
+          <img class="t-light" id="pop-light" src="images/popover-servers-light.webp" srcset="images/popover-servers-light@1x.webp 1x, images/popover-servers-light.webp 2x, images/popover-servers-light@3x.webp 3x" width="520" height="560" alt="devdctr's menu bar window showing four dev servers, each matched to its project" fetchpriority="high">
+          <img class="t-dark" id="pop-dark" src="images/popover-servers-dark.webp" srcset="images/popover-servers-dark@1x.webp 1x, images/popover-servers-dark.webp 2x, images/popover-servers-dark@3x.webp 3x" width="520" height="560" alt="" aria-hidden="true">
           <div class="tab-hits" role="tablist" aria-label="Sections">
             <button role="tab" data-tab="servers" aria-label="Servers" aria-selected="true"></button>
-            <button role="tab" data-tab="network" aria-label="Network" aria-selected="false"></button>
-            <button role="tab" data-tab="ai" aria-label="AI" aria-selected="false"></button>
-            <button role="tab" data-tab="cleanup" aria-label="Cleanup" aria-selected="false"></button>
-            <button role="tab" data-tab="domains" aria-label="Domains" aria-selected="false"></button>
             <button role="tab" data-tab="projects" aria-label="Projects" aria-selected="false"></button>
             <button role="tab" data-tab="git" aria-label="Git" aria-selected="false"></button>
             <button role="tab" data-tab="runtimes" aria-label="Runtimes" aria-selected="false"></button>
+            <button role="tab" data-tab="domains" aria-label="Domains" aria-selected="false"></button>
+            <button role="tab" data-tab="network" aria-label="Network" aria-selected="false"></button>
+            <button role="tab" data-tab="ai" aria-label="AI" aria-selected="false"></button>
             <button role="tab" data-tab="doctor" aria-label="Doctor" aria-selected="false"></button>
+            <button role="tab" data-tab="cleanup" aria-label="Cleanup" aria-selected="false"></button>
           </div>
         </div>
         <p class="mock-note">Real screenshots. Click the tabs to look around.</p>
@@ -588,8 +589,8 @@ footer a { text-decoration: none; } footer a:hover { color: var(--ink); }
       <button role="tab" data-shot="servers" aria-selected="false">Servers</button>
     </div>
     <div class="shot-win">
-      <img class="t-light" id="win-light" src="images/window-git-light.webp" width="1040" height="680" loading="lazy" alt="The devdctr window: a sidebar of tools, with the Git tab listing repositories by what's changed and not pushed">
-      <img class="t-dark" id="win-dark" src="images/window-git-dark.webp" width="1040" height="680" loading="lazy" alt="" aria-hidden="true">
+      <img class="t-light" id="win-light" src="images/window-git-light.webp" srcset="images/window-git-light@1x.webp 1x, images/window-git-light.webp 2x, images/window-git-light@3x.webp 3x" width="1040" height="680" loading="lazy" alt="The devdctr window: a sidebar of tools, with the Git tab listing repositories by what's changed and not pushed">
+      <img class="t-dark" id="win-dark" src="images/window-git-dark.webp" srcset="images/window-git-dark@1x.webp 1x, images/window-git-dark.webp 2x, images/window-git-dark@3x.webp 3x" width="1040" height="680" loading="lazy" alt="" aria-hidden="true">
     </div>
     <p class="win-caption" id="win-caption">Every repository, sorted by what needs attention.</p>
   </div>
@@ -617,8 +618,8 @@ footer a { text-decoration: none; } footer a:hover { color: var(--ink); }
         <p class="ai-compat">Usage figures for Claude Code. Also spots Cursor, ChatGPT, Codex, Gemini CLI and local models in Ollama and LM Studio.</p>
       </div>
       <div class="ai-shot">
-        <img class="t-light" src="images/popover-ai-light.webp" width="520" height="560" loading="lazy" alt="devdctr's AI tab: tokens and cost for the last 5 hours, today and this week, a chart of the last two weeks, and two open sessions with their model and context">
-        <img class="t-dark" src="images/popover-ai-dark.webp" width="520" height="560" loading="lazy" alt="" aria-hidden="true">
+        <img class="t-light" src="images/popover-ai-light.webp" srcset="images/popover-ai-light@1x.webp 1x, images/popover-ai-light.webp 2x, images/popover-ai-light@3x.webp 3x" width="520" height="560" loading="lazy" alt="devdctr's AI tab: tokens and cost for the last 5 hours, today and this week, a chart of the last two weeks, and two open sessions with their model and context">
+        <img class="t-dark" src="images/popover-ai-dark.webp" srcset="images/popover-ai-dark@1x.webp 1x, images/popover-ai-dark.webp 2x, images/popover-ai-dark@3x.webp 3x" width="520" height="560" loading="lazy" alt="" aria-hidden="true">
       </div>
     </div>
 
@@ -877,12 +878,21 @@ footer a { text-decoration: none; } footer a:hover { color: var(--ink); }
     runtimes: "the Node version used by default and by each project",
     doctor: "a check-up with one problem and several warnings",
   };
+  // Each screenshot comes at 1x, 2x and 3x so every screen gets one that maps pixel for pixel.
+  const setShot = (img, base) => {
+    img.srcset = `images/${base}@1x.webp 1x, images/${base}.webp 2x, images/${base}@3x.webp 3x`;
+    img.src = `images/${base}.webp`;
+  };
+  const shotURL = base => {
+    const r = window.devicePixelRatio || 1;
+    return `images/${base}${r <= 1 ? "@1x" : r > 2 ? "@3x" : ""}.webp`;
+  };
   const hits = document.querySelectorAll(".tab-hits button");
   hits.forEach(button => button.addEventListener("click", () => {
     const key = button.dataset.tab;
     hits.forEach(b => b.setAttribute("aria-selected", String(b === button)));
-    popLight.src = `images/popover-${key}-light.webp`;
-    popDark.src = `images/popover-${key}-dark.webp`;
+    setShot(popLight, `popover-${key}-light`);
+    setShot(popDark, `popover-${key}-dark`);
     popLight.alt = `devdctr's menu bar window showing ${popAlt[key]}`;
   }));
 
@@ -904,8 +914,8 @@ footer a { text-decoration: none; } footer a:hover { color: var(--ink); }
   choices.forEach(button => button.addEventListener("click", () => {
     const key = button.dataset.shot;
     choices.forEach(b => b.setAttribute("aria-selected", String(b === button)));
-    winLight.src = `images/window-${key}-light.webp`;
-    winDark.src = `images/window-${key}-dark.webp`;
+    setShot(winLight, `window-${key}-light`);
+    setShot(winDark, `window-${key}-dark`);
     winLight.alt = `The devdctr window. ${captions[key]}`;
     caption.textContent = captions[key];
   }));
@@ -958,8 +968,8 @@ footer a { text-decoration: none; } footer a:hover { color: var(--ink); }
   // Fetch the other screenshots once the page is idle, so switching is instant.
   const preload = () => {
     const mode = document.documentElement.dataset.theme === "light" ? "light" : "dark";
-    Object.keys(popAlt).forEach(k => { new Image().src = `images/popover-${k}-${mode}.webp`; });
-    Object.keys(captions).forEach(k => { new Image().src = `images/window-${k}-${mode}.webp`; });
+    Object.keys(popAlt).forEach(k => { new Image().src = shotURL(`popover-${k}-${mode}`); });
+    Object.keys(captions).forEach(k => { new Image().src = shotURL(`window-${k}-${mode}`); });
   };
   ("requestIdleCallback" in window) ? requestIdleCallback(preload) : setTimeout(preload, 1500);
 })();
